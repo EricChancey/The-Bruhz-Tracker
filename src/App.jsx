@@ -104,7 +104,7 @@ export default function BruhzTracker() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [showLog, setShowLog] = useState(false);
-  const [logForm, setLogForm] = useState({ bruhId:null, type:"phone", minutes:"", note:"" });
+  const [logForm, setLogForm] = useState({ bruhId:null, type:"phone", minutes:"", note:"", date:"" });
   const [showAddBruh, setShowAddBruh] = useState(false);
   const [newBruh, setNewBruh] = useState({ name:"",year:"",line:"",phone:"" });
   const [noteInput, setNoteInput] = useState("");
@@ -177,17 +177,17 @@ export default function BruhzTracker() {
 
   // Log outreach
   function logOutreach() {
-    if (!logForm.bruhId || !logForm.minutes) return;
+    if (!logForm.bruhId || !logForm.minutes || !logForm.date) return;
     const entry = {
       id: Date.now(),
       bruhId: logForm.bruhId,
       type: logForm.type,
       minutes: parseInt(logForm.minutes)||0,
       note: logForm.note.trim(),
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(logForm.date + "T12:00:00").toISOString(),
     };
     persist({ ...data, outreaches: [...(data.outreaches||[]), entry] });
-    setLogForm({ bruhId:null, type:"phone", minutes:"", note:"" });
+    setLogForm({ bruhId:null, type:"phone", minutes:"", note:"", date:"" });
     setShowLog(false);
   }
 
@@ -301,12 +301,10 @@ export default function BruhzTracker() {
         {/* ===== DASHBOARD ===== */}
         {view==="dashboard" && (
           <div>
-            {/* Log button */}
-            {isCurrentWeek && (
-              <div style={{ textAlign:"center",marginBottom:24 }}>
-                <button onClick={()=>setShowLog(true)} style={{ ...btnGold,fontSize:16,padding:"14px 40px",borderRadius:8 }}>+ Log Outreach</button>
-              </div>
-            )}
+            {/* Log button - available on any week */}
+            <div style={{ textAlign:"center",marginBottom:24 }}>
+              <button onClick={()=>{setLogForm({...logForm,bruhId:null,type:"phone",minutes:"",note:"",date:""});setShowLog(true);}} style={{ ...btnGold,fontSize:16,padding:"14px 40px",borderRadius:8 }}>+ Log Outreach</button>
+            </div>
 
             {/* Weekly Stats */}
             <div style={{ fontSize:11,letterSpacing:3,textTransform:"uppercase",color:GOLD,fontWeight:600,marginBottom:12 }}>WEEKLY SUMMARY</div>
@@ -422,9 +420,7 @@ export default function BruhzTracker() {
                       <div style={{ padding:"10px 0",fontSize:13,opacity:.7 }}>📱 {b.phone}</div>
 
                       {/* Quick log for this bruh */}
-                      {isCurrentWeek && (
-                        <button onClick={()=>{setLogForm({...logForm,bruhId:b.id});setShowLog(true);}} style={{...btnOutline,marginBottom:12,width:"100%",textAlign:"center"}}>+ Log Outreach with {b.name.split(" ")[0]}</button>
-                      )}
+                      <button onClick={()=>{setLogForm({...logForm,bruhId:b.id,type:"phone",minutes:"",note:"",date:""});setShowLog(true);}} style={{...btnOutline,marginBottom:12,width:"100%",textAlign:"center"}}>+ Log Outreach with {b.name.split(" ")[0]}</button>
 
                       {/* This week's activity */}
                       {s.total>0 && (
@@ -493,7 +489,7 @@ export default function BruhzTracker() {
                   <div style={{ textAlign:"right",flexShrink:0 }}>
                     <div style={{ fontSize:11,opacity:.4 }}>{dt.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</div>
                     <div style={{ fontSize:11,opacity:.3 }}>{dt.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</div>
-                    {isCurrentWeek && <button onClick={()=>deleteOutreach(o.id)} style={{ background:"none",border:"none",color:RED,opacity:.4,cursor:"pointer",fontSize:11,marginTop:4 }}>delete</button>}
+                    <button onClick={()=>deleteOutreach(o.id)} style={{ background:"none",border:"none",color:RED,opacity:.4,cursor:"pointer",fontSize:11,marginTop:4 }}>delete</button>
                   </div>
                 </div>
               );
@@ -564,6 +560,37 @@ export default function BruhzTracker() {
               </select>
             </div>
 
+            {/* Date */}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:11,letterSpacing:2,color:GOLD,marginBottom:6,fontWeight:600 }}>DATE OF OUTREACH</div>
+              {(() => {
+                const [y,m,d] = selectedWeek.split("-").map(Number);
+                const weekStart = new Date(y,m-1,d);
+                const days = [];
+                for (let i=0; i<7; i++) {
+                  const day = new Date(weekStart);
+                  day.setDate(weekStart.getDate()+i);
+                  days.push(day);
+                }
+                return (
+                  <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+                    {days.map((day,i) => {
+                      const val = day.toISOString().split("T")[0];
+                      const isSelected = logForm.date === val;
+                      const dayName = day.toLocaleDateString("en-US",{weekday:"short"});
+                      const dayNum = day.getDate();
+                      return (
+                        <button key={i} onClick={()=>setLogForm({...logForm,date:val})} style={{ flex:"1 1 40px",padding:"8px 4px",border:`1.5px solid ${isSelected?GOLD:PURPLE}`,background:isSelected?GOLD:"transparent",color:isSelected?PURPLE_DARK:GOLD_LIGHT,borderRadius:6,cursor:"pointer",textAlign:"center",minWidth:44 }}>
+                          <div style={{ fontSize:10,opacity:isSelected?1:.5,fontWeight:600 }}>{dayName}</div>
+                          <div style={{ fontSize:16,fontWeight:700,marginTop:2 }}>{dayNum}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
             {/* Type */}
             <div style={{ marginBottom:14 }}>
               <div style={{ fontSize:11,letterSpacing:2,color:GOLD,marginBottom:6,fontWeight:600 }}>TYPE</div>
@@ -587,7 +614,7 @@ export default function BruhzTracker() {
 
             <div style={{ display:"flex",gap:10 }}>
               <button onClick={()=>setShowLog(false)} style={{...btnOutline,flex:1,textAlign:"center"}}>Cancel</button>
-              <button onClick={logOutreach} style={{...btnGold,flex:1,textAlign:"center",opacity:logForm.bruhId&&logForm.minutes?1:.4}}>Log Outreach</button>
+              <button onClick={logOutreach} style={{...btnGold,flex:1,textAlign:"center",opacity:logForm.bruhId&&logForm.minutes&&logForm.date?1:.4}}>Log Outreach</button>
             </div>
           </div>
         </div>
